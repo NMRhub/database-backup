@@ -146,12 +146,15 @@ class Manager:
                 self.path: Path = path
                 self.modtime : datetime.datetime = datetime.datetime.fromtimestamp(self.path.stat().st_mtime)
 
+            def __str__(self):
+                return self.path.name
+
             @property
             def prefix(self):
-                return self.path.name.split('_',maxsplit=1)[0]
+                return self.path.name.split(MARKER,maxsplit=1)[0]
 
         existing = collections.defaultdict(list)
-        for r in self.location.glob(MARKER):
+        for r in self.location.glob(f"*{MARKER}*"):
             df = DumpFile(r)
             existing[df.prefix].append(df)
 
@@ -164,7 +167,7 @@ class Manager:
                     database_backup_logger.info(f"deleting {df.path.name}")
                     df.path.unlink()
                 else:
-                    database_backup_logger.debug(f"{df.path.name} mtime {df.modtime} >= cuttime {cuttime}")
+                    database_backup_logger.debug(f"{df} mtime {df.modtime} >= cuttime {cuttime}")
 
     def backup(self):
         """Do backups that are currently due"""
