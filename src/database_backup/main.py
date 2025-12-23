@@ -1,21 +1,3 @@
-#!/usr/bin/env python3
-import shlex
-import sqlite3
-from pathlib import Path
-
-import yaml
-from database_backup import database_backup_logger
-
-#!/usr/bin/env python3
-import argparse
-import datetime
-import logging
-import os
-import socket
-import subprocess
-import sys
-
-import humanfriendly
 # !/usr/bin/env python3
 import argparse
 import datetime
@@ -216,7 +198,6 @@ def main():
 
 
 if __name__ == "__main__":
-    _DEBUG = True
     if os.getuid() == 0:
         os.setuid(1002)  # service file specifies local db_backup account, uid == 1002 on data12
     main()
