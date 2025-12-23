@@ -1,5 +1,6 @@
 # !/usr/bin/env python3
 import argparse
+import collections
 import datetime
 import logging
 import os
@@ -8,6 +9,7 @@ import socket
 import sqlite3
 import subprocess
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 import humanfriendly
@@ -20,6 +22,7 @@ from database_backup import database_backup_logger
 
 IONICE = '/usr/bin/ionice'
 PG_DUMP = '/usr/bin/pg_dump'
+MARKER = '-ts-'
 
 class Backup:
     """A single backup, from config file, put last backup from state file"""
@@ -61,10 +64,13 @@ class Manager:
         self.location = Path(top['location'])
         if not self.location.is_dir():
             raise FileNotFoundError('{} is not a directory'.format(self.location))
+        statfile = self.location / top['state data']
+        if statfile.exists():
+            if (fo := statfile.stat().st_uid) != (ro := os.geteuid()):
+                raise ValueError(f"{statfile.as_posix()} owner {fo} != process owner {ro}")
         self.user = top['account']
         self.server = top['server']
         self.port = int(top.get('port', 5432))
-        statfile = self.location / top['state data']
         self.state_db = sqlite3.connect(statfile)
         self.state_db.autocommit = True
         self.state_db.execute("""CREATE TABLE IF NOT EXISTS backups (
@@ -95,7 +101,7 @@ class Manager:
 
     def pgdump(self, backup: Backup,now:datetime.datetime)->None:
         """backup database via pg_dump"""
-        name = now.strftime(f"{backup.name}-%Y-%m-%d-%H-%M")
+        name = now.strftime(f"{backup.name}{MARKER}%Y-%m-%d-%H-%M")
         path = os.path.join(self.location, name)
         if self.server == 'peer':
             cmds = [IONICE,'-c','3',PG_DUMP, '--username', self.user, '--dbname', backup.database, '--file', path]
@@ -132,22 +138,33 @@ class Manager:
             cmds.extend(('--schema',schema))
         subprocess.run(cmds, check=True)
 
-    def clean(self, backup: Backup):
+    def clean(self):
         """remove expired backups"""
-        cuttime = datetime.datetime.now() - backup.retain
-        database_backup_logger.debug(f"looking for {backup.name} files older than {cuttime} in {self.location}")
-        for de_ in os.scandir(self.location):
-            # noinspection PyTypeChecker
-            de: os.DirEntry = de_
-            if de.name.startswith(backup.name):
-                mtime = datetime.datetime.fromtimestamp(de.stat().st_mtime)
-                if mtime < cuttime:
-                    database_backup_logger.info("deleting {}".format(de.name))
-                    os.remove(de.path)
+        class DumpFile:
+
+            def __init__(self,path:Path):
+                self.path: Path = path
+                self.modtime : datetime.datetime = datetime.datetime.fromtimestamp(self.path.stat().st_mtime)
+
+            @property
+            def prefix(self):
+                return self.path.name.split('_',maxsplit=1)[0]
+
+        existing = collections.defaultdict(list)
+        for r in self.location.glob(MARKER):
+            df = DumpFile(r)
+            existing[df.prefix].append(df)
+
+        for backup in self.backups:
+            cuttime = datetime.datetime.now() - backup.retain
+            database_backup_logger.debug(f"looking for {backup.name} files older than {cuttime} in {self.location}")
+            df: DumpFile
+            for df in existing.get(backup.name,[]):
+                if df.modtime < cuttime:
+                    database_backup_logger.info(f"deleting {df.path.name}")
+                    df.path.unlink()
                 else:
-                    database_backup_logger.debug("{} mtime {} >= cuttime {}".format(de.name, mtime, cuttime))
-            else:
-                database_backup_logger.debug("Name {} doesn't startwith {}".format(de.name, backup.name))
+                    database_backup_logger.debug(f"{df.path.name} mtime {df.modtime} >= cuttime {cuttime}")
 
     def backup(self):
         """Do backups that are currently due"""
@@ -166,9 +183,9 @@ class Manager:
         else:
             for backup in self.backups:
                 database_backup_logger.info(backup)
-    #            self.clean(backup)
                 if backup.next_backup < now:
                     self.pgdump(backup,now)
+        self.clean()
         if database_backup_logger.isEnabledFor(logging.DEBUG):
             for backup in self.backups:
                 database_backup_logger.debug(backup)
