@@ -1,0 +1,75 @@
+---
+servers:
+  lion-den.example:
+    account: zoo_backup
+    location: /zoo/backup/lion-den
+    port: 5432
+    server: peer
+    state data: lion-den.sqlite
+    set: habitat
+
+  penguin-house.example:
+    account: zoo_backup
+    location: /zoo/backup/penguin-house
+    server: peer
+    state data: penguin-house.sqlite
+    set: habitat
+
+sets:
+  habitat:
+    feeding_logs:
+      database: animal_feeding
+      interval: 1day
+      label: daily-feeding
+      retain: 30day
+      schemas:
+        - carnivores
+        - herbivores
+
+    daily_reports:
+      database: zoo_records
+      interval: 24hour
+      label: daily-records
+      retain: 3day
+      schemas:
+        - visitors
+        - incidents
+
+    structure_only:
+      database: zoo_records
+      interval: 1day
+      label: daily-structure
+      retain: 365day
+      schema only: true
+
+    hourly_checks:
+      database: zoo_records
+      interval: 1hour
+      label: hourly-checks
+      retain: 30day
+      schemas:
+        - enclosures
+        - safety
+        - maintenance
+        - staffing
+        - schedules
+        - animals
+        - veterinary
+        - logistics
+        - exhibits
+        - weather
+        - monitoring
+        - events
+        - supplies
+        - tickets
+        - transport
+        - cleaning
+        - signage
+        - security
+
+    page_stats:
+      database: zoo_records
+      interval: 15minute
+      label: visitor-pages
+      retain: 1day
+...
