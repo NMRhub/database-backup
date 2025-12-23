@@ -78,7 +78,7 @@ class Manager:
             if row:
                 last_bu = datetime.datetime.fromisoformat(row[0])
             else:
-                last_bu = datetime.datetime(year=1, month=1, day=1)
+                last_bu = datetime.datetime(year=1, month=1, day=1,tzinfo=datetime.timezone.utc)
             bu = Backup(key,data,last_bu)
             self.backups.append(bu)
 
