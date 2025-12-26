@@ -20,7 +20,6 @@ sets:
     feeding_logs:
       database: animal_feeding
       interval: 1day
-      label: daily-feeding
       retain: 30day
       schemas:
         - carnivores
@@ -29,7 +28,6 @@ sets:
     daily_reports:
       database: zoo_records
       interval: 24hour
-      label: daily-records
       retain: 3day
       schemas:
         - visitors
@@ -38,14 +36,12 @@ sets:
     structure_only:
       database: zoo_records
       interval: 1day
-      label: daily-structure
       retain: 365day
       schema only: true
 
     hourly_checks:
       database: zoo_records
       interval: 1hour
-      label: hourly-checks
       retain: 30day
       schemas:
         - enclosures
@@ -70,6 +66,5 @@ sets:
     page_stats:
       database: zoo_records
       interval: 15minute
-      label: visitor-pages
       retain: 1day
 ...
