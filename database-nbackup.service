@@ -1,0 +1,18 @@
+# systemd control file
+# install 'systemctl link [full path to filename]' 
+
+[Unit]
+Description=Database backup service
+After=network.target auditd.service
+
+[Service]
+ExecStart=/usr/local/nmrhub/database-backup/.venv/bin/database-backup /usr/local/nmrhub/database-backup/backup.yaml
+KillMode=process
+Restart=on-failure
+RestartPreventExitStatus=255
+RestartSec=30min
+Type=simple
+User=db_backup
+
+[Install]
+WantedBy=multi-user.target
